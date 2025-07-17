@@ -26,13 +26,22 @@ defmodule VIES do
       ...
   """
   def validate(number, options \\ []) do
-    case check(number, options) do
-      {:ok, map} ->
-        if map["valid"] do
+    case request(number, options) do
+      {:ok, %{body: %{"valid" => valid} = map}} ->
+        if valid do
           map
         else
           raise "#{inspect(number)} is invalid!"
         end
+
+      {:ok, resp} ->
+        raise """
+        unexpected status #{resp.status} from VIES
+
+        #{inspect(resp.headers, pretty: true)}
+
+        #{inspect(resp.body, pretty: true)}
+        """
 
       {:error, exception} ->
         raise exception
@@ -40,9 +49,11 @@ defmodule VIES do
   end
 
   @doc """
-  Checks the VAT number.
+  Makes a request to VIES.
 
-  Returns information about the VAT number, even if it's invalid.
+  Note, even if VIES returns HTTP status 200, the response can still be an error,
+  one needs to check if `"valid"` field is in the response body. This is done
+  by `validate/2`.
 
   ## Options
 
@@ -50,37 +61,14 @@ defmodule VIES do
 
   ## Examples
 
-      iex> {:ok, map} = VIES.check("PL6793108059")
-      iex> map["valid"]
+      iex> {:ok, resp} = VIES.request("PL6793108059")
+      iex> resp.body["valid"]
       true
 
-      iex> {:ok, map} = VIES.check("PL0000000000")
-      iex> map["valid"]
+      iex> {:ok, resp} = VIES.request("PL0000000000")
+      iex> resp.body["valid"]
       false
   """
-  def check(number, options \\ []) do
-    case request(number, options) do
-      {:ok, %{status: 200, body: %{"valid" => _} = body}} ->
-        {:ok, body}
-
-      {:ok, resp} ->
-        exception =
-          RuntimeError.exception("""
-          unexpected status #{resp.status} from VIES
-
-          #{inspect(resp.headers, pretty: true)}
-
-          #{inspect(resp.body, pretty: true)}
-          """)
-
-        {:error, exception}
-
-      {:error, _} = error ->
-        error
-    end
-  end
-
-  @doc false
   def request(<<letter1, letter2>> <> rest, options \\ [])
       when letter1 in ?A..?Z and letter2 in ?A..?Z do
     url = "https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number"

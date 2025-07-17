@@ -7,11 +7,11 @@ VIES VAT number check library using Req.
 ```elixir
 iex> Mix.install([{:vies, github: "wojtekmach/vies"}])
 
-iex> VIES.check("PL6793108059")
-{:ok, %{"valid" => true, ...}}
+iex> VIES.request("PL6793108059")
+{:ok, %Req.Response%{status: 200, body: %{"valid" => true, ...}}}
 
-iex> VIES.check("PL0000000000")
-{:ok, %{"valid" => false, ...}}
+iex> VIES.request("PL0000000000")
+{:ok, %Req.Response%{status: 200, body: %{"valid" => false, ...}}}
 
 iex> VIES.validate("PL6793108059")
 %{"valid" => true, ...}
